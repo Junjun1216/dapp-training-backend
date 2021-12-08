@@ -1,15 +1,29 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-admin.initializeApp();
+const serviceAccount = require("dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json");
 
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 const db = admin.firestore();
+const bucket = admin.storage().bucket();
+
+exports.uploadProfile = functions.https.onCall(async (data, context) => {
+  const base64EncodedImageString = data.image.replace(/^data:image\/\w+;base64,/, '');
+  const imageBuffer = new Buffer(base64EncodedImageString, 'base64');
+
+  const file = bucket.file("example.jpg");
+  await file.save(imageBuffer, { contentType: 'image/jpeg' });
+  const photoURL = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' }).then(urls => urls[0]);
+
+  return { photoURL };
+});
 
 exports.fetchAvailableColors = functions.https.onCall(async () => {
   let query = await db.collection("color-game").doc("available-colors").get();
   return query.data();
 });
-
 
 exports.fetchUsers = functions.https.onCall(async () => {
   let query = await db.collection("users").get();
@@ -45,3 +59,4 @@ exports.updateAvailability = functions.https.onCall(async (data, context) => {
 
   return await db.collection("color-game").doc("available-colors").set(data.availableChoices);
 });
+
