@@ -1,4 +1,10 @@
 {
   "functions": {
+  },
+  "emulators": {
+    "functions": {
+      "port": "5000"
+    }
   }
+
 }

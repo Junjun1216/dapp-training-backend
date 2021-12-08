@@ -1,21 +1,36 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-const serviceAccount = require("dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json");
+const fs = require('fs')
+let serviceAccount = JSON.parse(fs.readFileSync('dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json', 'utf-8'))
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: "gs://dapp-training-275b0.appspot.com/"
 });
+
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
 exports.uploadProfile = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
+  }
   const base64EncodedImageString = data.image.replace(/^data:image\/\w+;base64,/, '');
   const imageBuffer = new Buffer(base64EncodedImageString, 'base64');
 
-  const file = bucket.file("example.jpg");
+  const file = bucket.file(context.auth.uid + ".jpg");
   await file.save(imageBuffer, { contentType: 'image/jpeg' });
   const photoURL = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' }).then(urls => urls[0]);
+
+  let query = await db.collection("users").where("uid", "==", context.auth.uid).get();
+  let userData = null;
+  query.docs.forEach(user => {
+    userData = user.data();
+    userData.profileUrl = photoURL
+  })
+
+  await db.collection("users").doc(userData.email).set(userData)
 
   return { photoURL };
 });
