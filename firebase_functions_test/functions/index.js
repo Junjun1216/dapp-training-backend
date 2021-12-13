@@ -1,77 +1,105 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const { PrismaClient } = require('@prisma/client');
 
 const fs = require('fs')
 let serviceAccount = JSON.parse(fs.readFileSync('dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json', 'utf-8'))
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: "gs://dapp-training-275b0.appspot.com/"
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "gs://dapp-training-275b0.appspot.com/"
 });
 
-const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
+const prisma = new PrismaClient();
+
 exports.uploadProfile = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
-  }
-  const base64EncodedImageString = data.image.replace(/^data:image\/\w+;base64,/, '');
-  const imageBuffer = new Buffer(base64EncodedImageString, 'base64');
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
+    }
+    const base64EncodedImageString = data.image.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = new Buffer(base64EncodedImageString, 'base64');
 
-  const file = bucket.file(context.auth.uid + ".jpg");
-  await file.save(imageBuffer, { contentType: 'image/jpeg' });
-  const photoURL = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' }).then(urls => urls[0]);
+    const file = bucket.file(context.auth.uid + ".jpg");
+    await file.save(imageBuffer, { contentType: 'image/jpeg' });
+    const photoURL = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' }).then(urls => urls[0]);
 
-  let query = await db.collection("users").where("uid", "==", context.auth.uid).get();
-  let userData = null;
-  query.docs.forEach(user => {
-    userData = user.data();
-    userData.profileUrl = photoURL
-  })
-
-  await db.collection("users").doc(userData.email).set(userData)
-
-  return { photoURL };
+    return await prisma.users.update({
+        where: {
+            uid: context.auth.uid
+        },
+        data: {
+            profileurl: photoURL
+        }
+    })
 });
 
 exports.fetchAvailableColors = functions.https.onCall(async () => {
-  let query = await db.collection("color-game").doc("available-colors").get();
-  return query.data();
+    let colors = await prisma.availablecolors.findMany();
+    let result = {};
+
+    for (let x = 0; x < colors.length; x++) {
+        result[colors[x].colors] = colors[x].available
+    }
+
+    return result
 });
 
 exports.fetchUsers = functions.https.onCall(async () => {
-  let query = await db.collection("users").get();
-  let result = {};
+    let users = await prisma.users.findMany();
+    let result = {};
 
-  query.docs.forEach(content => {
-    let data = content.data();
+    for (let x = 0; x < users.length; x++) {
+        let user = {};
+        user.choice = users[x].choice;
+        user.email = users[x].email;
+        user.profileUrl = users[x].profileurl;
+        user.uid = users[x].uid;
 
-    result[data.email] = data;
-  })
+        result[user.email] = user;
+    }
 
-  return result;
+    return result;
 });
 
 exports.updateUser = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
-  }
-  let query = await db.collection("users").where("uid", "==", context.auth.uid).get();
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
+    }
 
-  let userData = null;
-  query.docs.forEach(user => {
-    userData = user.data();
-  })
+    return await prisma.users.update({
+        where: {
+            uid: context.auth.uid
+        },
+        data: {
+            choice: data.user.choice
+        }
+    })
 
-  return await db.collection("users").doc(userData.email).set(data.user);
 });
 
 exports.updateAvailability = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
-  }
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
+    }
 
-  return await db.collection("color-game").doc("available-colors").set(data.availableChoices);
+    let keys = Object.keys(data.availableChoices);
+    let newAvailability = {};
+
+    for (let x=0; x < keys.length; x++) {
+        let option = await prisma.availablecolors.update({
+            where: {
+                colors: keys[x]
+            },
+            data: {
+                available: data.availableChoices[keys[x]]
+            }
+        });
+
+        newAvailability[option.colors] = option.available;
+    }
+
+    return newAvailability;
 });
 

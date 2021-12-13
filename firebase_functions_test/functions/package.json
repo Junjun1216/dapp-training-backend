@@ -7,20 +7,24 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "postinstall": "CI=1 && PRISMA_TELEMETRY_INFORMATION='e2e-tests platforms/firebase-functions postinstall' && npx prisma generate"
   },
   "engines": {
     "node": "14"
   },
   "main": "index.js",
   "dependencies": {
+    "@prisma/client": "^3.6.0",
     "firebase-admin": "^10.0.0",
-    "firebase-functions": "^3.16.0"
+    "firebase-functions": "^3.16.0",
+    "pg": "^8.7.1"
   },
   "devDependencies": {
     "eslint": "^7.6.0",
     "eslint-config-google": "^0.14.0",
-    "firebase-functions-test": "^0.2.0"
+    "firebase-functions-test": "^0.2.0",
+    "prisma": "^3.6.0"
   },
   "private": true
 }

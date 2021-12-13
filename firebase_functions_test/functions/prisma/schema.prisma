@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:123456@34.130.109.203:5432/postgres?schema=public"
+}
+
+model availablecolors {
+  colors    String  @id
+  available Boolean
+}
+
+model users {
+  choice     String
+  email      String
+  profileurl String
+  uid        String @id
+}
