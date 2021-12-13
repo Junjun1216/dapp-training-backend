@@ -64,3 +64,5 @@ node_modules/
 
 # dotenv environment variables file
 .env
+dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json
+.runtimeconfig.json
