@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres:123456@34.130.109.203:5432/postgres?schema=public"
+  url      = env("DATABASE_URL")
 }
 
 model availablecolors {

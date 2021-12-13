@@ -2,8 +2,10 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { PrismaClient } = require('@prisma/client');
 
-const fs = require('fs')
-let serviceAccount = JSON.parse(fs.readFileSync('dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json', 'utf-8'))
+const fs = require('fs');
+let serviceAccount = JSON.parse(fs.readFileSync('dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json', 'utf-8'));
+
+process.env.DATABASE_URL = functions.config().db.gcurl;
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -21,7 +23,7 @@ exports.uploadProfile = functions.https.onCall(async (data, context) => {
     const base64EncodedImageString = data.image.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = new Buffer(base64EncodedImageString, 'base64');
 
-    const file = bucket.file(context.auth.uid + ".jpg");
+    const file = bucket.file(context.auth.uid + (Math.floor(Math.random() * 10000) + ".jpg"));
     await file.save(imageBuffer, { contentType: 'image/jpeg' });
     const photoURL = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' }).then(urls => urls[0]);
 
@@ -35,7 +37,11 @@ exports.uploadProfile = functions.https.onCall(async (data, context) => {
     })
 });
 
-exports.fetchAvailableColors = functions.https.onCall(async () => {
+exports.fetchAvailableColors = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
+    }
+
     let colors = await prisma.availablecolors.findMany();
     let result = {};
 
@@ -46,7 +52,11 @@ exports.fetchAvailableColors = functions.https.onCall(async () => {
     return result
 });
 
-exports.fetchUsers = functions.https.onCall(async () => {
+exports.fetchUsers = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "user is not authenticated")
+    }
+
     let users = await prisma.users.findMany();
     let result = {};
 

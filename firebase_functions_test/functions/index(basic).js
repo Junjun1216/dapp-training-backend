@@ -23,7 +23,7 @@ exports.uploadProfile = functions.https.onCall(async (data, context) => {
   await file.save(imageBuffer, { contentType: 'image/jpeg' });
   const photoURL = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' }).then(urls => urls[0]);
 
-  let query = await db.collection("users").were("uid", "==", context.auth.uid).get();
+  let query = await db.collection("users").where("uid", "==", context.auth.uid).get();
   let userData = null;
   query.docs.forEach(user => {
     userData = user.data();

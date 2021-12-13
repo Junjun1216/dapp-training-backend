@@ -1,0 +1,5 @@
+{
+  "db": {
+    "gcurl": "postgresql://postgres:123456@34.130.109.203:5432/postgres?schema=public"
+  }
+}
