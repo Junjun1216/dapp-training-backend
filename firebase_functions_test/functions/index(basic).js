@@ -1,16 +1,24 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-const fs = require('fs')
-let serviceAccount = JSON.parse(fs.readFileSync('dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json', 'utf-8'))
-
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(functions.config().service_account),
   storageBucket: "gs://dapp-training-275b0.appspot.com/"
 });
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
+
+exports.onUserCreation = functions.auth.user().onCreate(async user => {
+  let newUser = {
+    choice: "#B0AAA9",
+    email: user.email,
+    profileUrl: "",
+    uid: user.uid
+  }
+
+  return db.collection("users").doc(user.email).set(newUser);
+});
 
 exports.uploadProfile = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -74,4 +82,3 @@ exports.updateAvailability = functions.https.onCall(async (data, context) => {
 
   return await db.collection("color-game").doc("available-colors").set(data.availableChoices);
 });
-

@@ -2,19 +2,27 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { PrismaClient } = require('@prisma/client');
 
-const fs = require('fs');
-let serviceAccount = JSON.parse(fs.readFileSync('dapp-training-275b0-firebase-adminsdk-4hl06-c47c0ba957.json', 'utf-8'));
-
 process.env.DATABASE_URL = functions.config().db.gcurl;
 
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(functions.config().service_account),
     storageBucket: "gs://dapp-training-275b0.appspot.com/"
 });
 
 const bucket = admin.storage().bucket();
 
 const prisma = new PrismaClient();
+
+exports.onUserCreation = functions.auth.user().onCreate(async user => {
+    return await prisma.users.create({
+        data: {
+            choice: "#B0AAA9",
+            email: user.email,
+            profileurl: "",
+            uid: user.uid
+        }
+    })
+});
 
 exports.uploadProfile = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
